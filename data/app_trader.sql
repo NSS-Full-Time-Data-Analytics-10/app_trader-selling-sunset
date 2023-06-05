@@ -33,43 +33,50 @@ app_store_apps.price::money, app_store_apps.primary_genre, play_store_apps.ratin
 ORDER BY app_store_apps.review_count::numeric DESC;
 
 --	b. Develop a Top 10 List of the apps that App Trader should buy based on profitability/return on investment as the sole priority.
-WITH top_10 AS ((WITH app_store AS(SELECT name, price::money AS price,
-									CASE WHEN price = 0.00 THEN 25000::money
-									ELSE (price * 10000)::money
-									END AS purchase_price
-				 				 FROM app_store_apps)
-						SELECT *
-						FROM app_store)
-			    UNION
-				(WITH play_store AS(SELECT name, price::money,
-									CASE WHEN price = '0' THEN '25000'
-									ELSE (price::money * 10000)
-									END AS purchase_price
-									FROM play_store_apps)
-						SELECT *
-						FROM play_store
-						ORDER BY purchase_price DESC))
+WITH top_10 AS ((WITH app_store AS(SELECT name, price::money AS price, review_count,
+											CASE WHEN price = 0.00 THEN 25000::money ELSE (price * 10000)::money END AS purchase_price,
+						    				review_count::numeric * price::money AS profit
+			  						 FROM app_store_apps)
+					SELECT *,
+					CASE WHEN review_count::int * price >= purchase_price THEN 'Y' ELSE 'N' END AS profitable
+					FROM app_store)
+		      UNION
+					(WITH play_store AS(SELECT name, price::money,install_count,
+											CASE WHEN price = '0' THEN '25000' ELSE (price::money * 10000) END AS purchase_price,
+											install_count::money::numeric * price::money AS profit
+										FROM play_store_apps)
+					SELECT *,
+					CASE WHEN install_count::Money::Numeric*price::money >= purchase_price THEN 'Y' ELSE 'N' END AS profitable
+					FROM play_store))
 SELECT *
-FROM top_10;
+FROM top_10
+WHERE profitable = 'Y'
+ORDER BY profit DESC
+LIMIT 10;
 
-
-WITH app_trader AS (SELECT *,
-	CASE WHEN price = 0 THEN 25000::MONEY
-	ELSE price * 10000::MONEY
-	END AS purchase_price
-	FROM app_store_apps)
-	CASE WHEN install_count * price >= purchase_price THEN 'Y' ELSE 'N' END AS profitable
-	CASE WHEN price = '0' THEN '25000' 
-	ELSE price::MONEY * 10000
-	END AS purchase_price
-	FROM play_store_apps			
-ORDER BY purchase_price DESC
-
-SELECT *
-FROM play_store_apps
 
 --	c. Develop a Top 4 list of the apps that App Trader should buy that are profitable but that also are thematically appropriate for the upcoming Fourth of July themed campaign.
-
+WITH top_4_USA AS ((WITH app_store AS(SELECT name, price::money AS price, review_count,
+											CASE WHEN price = 0.00 THEN 25000::money ELSE (price * 10000)::money END AS purchase_price,
+						    				review_count::numeric * price::money AS profit
+			  						 FROM app_store_apps)
+					SELECT *,
+					CASE WHEN review_count::int * price >= purchase_price THEN 'Y' ELSE 'N' END AS profitable
+					FROM app_store)
+		      UNION
+					(WITH play_store AS(SELECT name, price::money,install_count,
+											CASE WHEN price = '0' THEN '25000' ELSE (price::money * 10000) END AS purchase_price,
+											install_count::money::numeric * price::money AS profit
+										FROM play_store_apps)
+					SELECT *,
+					CASE WHEN install_count::Money::Numeric*price::money >= purchase_price THEN 'Y' ELSE 'N' END AS profitable
+					FROM play_store))
+SELECT *
+FROM top_4_USA
+WHERE profitable = 'Y'
+AND name ILIKE '%America%' OR name ILIKE '%usa%' OR name ILIKE '%WW%'
+ORDER BY profit DESC
+LIMIT 4;
 
 --	d. Submit a report based on your findings. The report should include both of your lists of apps along with your analysis of their cost and potential profits. All analysis work must be done using PostgreSQL, however you may export query results to create charts in Excel for your report.
 
